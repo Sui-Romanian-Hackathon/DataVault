@@ -1,0 +1,46 @@
+import { getFullnodeUrl, SuiClient } from '@mysten/sui/client';
+import { decodeSuiPrivateKey } from '@mysten/sui/cryptography';
+import { Secp256k1Keypair } from '@mysten/sui/keypairs/secp256k1';
+import { Transaction } from '@mysten/sui/transactions';
+
+export const attribute_new = async (
+  privateKey: string,
+  packageId: string,
+  clientId: string,
+  clientOwnerCapId: string,
+  data: string,
+  isPublic: boolean
+): Promise<void> => {
+  try {
+    const client = new SuiClient({ url: getFullnodeUrl('testnet') });
+
+    const { secretKey } = decodeSuiPrivateKey(privateKey);
+    const signer = Secp256k1Keypair.fromSecretKey(secretKey);
+
+    const tx = new Transaction();
+
+    tx.moveCall({
+      target: `${packageId}::client::attribute_new`,
+      arguments: [
+        tx.object(clientId),
+        tx.object(clientOwnerCapId),
+        tx.pure.string(data),
+        tx.pure.bool(isPublic),
+      ],
+    });
+
+    const result = await client.signAndExecuteTransaction({
+      signer,
+      transaction: tx,
+      options: { showEffects: true },
+    });
+
+    if (result.effects?.status.status !== 'success') {
+      throw new Error(result.effects?.status.error ?? 'Transaction failed');
+    }
+
+  } catch (error) {
+    console.error('Error in attribute_new:', error);
+    throw error;
+  }
+};
